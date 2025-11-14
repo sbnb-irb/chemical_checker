@@ -58,6 +58,9 @@ From: ubuntu:20.04
     . /opt/miniconda3/etc/profile.d/conda.sh
 
     # using mamba for speedup
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
     conda install -q -y -n base -c conda-forge mamba
     conda config --add channels conda-forge
     mamba update -q -n base mamba
