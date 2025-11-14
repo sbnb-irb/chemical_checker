@@ -49,7 +49,7 @@ From: ubuntu:20.04
     bash Miniconda3-latest-Linux-x86_64.sh -p /opt/miniconda3 -b -f
     rm Miniconda3-latest-Linux-x86_64.sh
     export PATH=/opt/miniconda3/bin:$PATH
-    export MAMBA_NO_LOW_SPEED_LIMIT=1   # no timeout on mamba commands
+    export conda_NO_LOW_SPEED_LIMIT=1   # no timeout on conda commands
     export PIPENV_INSTALL_TIMEOUT=3600   # 1h timeout on pip install commands 
     export PIP_DEFAULT_TIMEOUT=3600
 
@@ -59,29 +59,27 @@ From: ubuntu:20.04
     conda update conda -y
     . /opt/miniconda3/etc/profile.d/conda.sh
 
-    # using mamba for speedup
+    # using conda for speedup
     
-    conda install -q -y -n base -c conda-forge mamba
     conda config --add channels conda-forge
-    mamba update -q -n base mamba
 
     # create venv
-    mamba create --name=cc_env python=3.10 -y
+    conda create --name=cc_env python=3.10 -y
     conda activate cc_env
 
     # conda-specific packages (~1 min)
-    mamba install -y -c conda-forge rdkit                                            # Open-Source Cheminformatics Software
-    mamba install -y -c openbabel openbabel                                          # chemical toolbox
-    mamba install -y mkl-service                                                     # change the number of CPU’s MKL is using
-    mamba install -y -c conda-forge hdbscan                                          # clustering
-    mamba install -y -c efelix fpsim2                                                # fast compound similarity searches (used in TargetMate)
-    mamba install -y -c conda-forge jupyterlab                                       # Jupyter-lab and notebooks
-    mamba install -y -c conda-forge ipywidgets                                       # Jupyter-lab widgets
-    mamba install -y -c anaconda ipython">7.19"                                      # interactive python
-    mamba install -y -c anaconda cython                                              # C extensions
-    mamba install -y -c conda-forge chembl_structure_pipeline                        # standardizing molecules the ChEMBL way
-    mamba install -y -c pytorch pytorch torchvision torchaudio cudatoolkit=11.3      # pytorch and cuda
-    # mamba install -y -c conda-forge faiss-gpu                                        # efficient similarity search and clustering
+    conda install -y -c conda-forge rdkit                                            # Open-Source Cheminformatics Software
+    conda install -y -c openbabel openbabel                                          # chemical toolbox
+    conda install -y mkl-service                                                     # change the number of CPU’s MKL is using
+    conda install -y -c conda-forge hdbscan                                          # clustering
+    conda install -y -c efelix fpsim2                                                # fast compound similarity searches (used in TargetMate)
+    conda install -y -c conda-forge jupyterlab                                       # Jupyter-lab and notebooks
+    conda install -y -c conda-forge ipywidgets                                       # Jupyter-lab widgets
+    conda install -y -c anaconda ipython">7.19"                                      # interactive python
+    conda install -y -c anaconda cython                                              # C extensions
+    conda install -y -c conda-forge chembl_structure_pipeline                        # standardizing molecules the ChEMBL way
+    conda install -y -c pytorch pytorch torchvision torchaudio cudatoolkit=11.3      # pytorch and cuda
+    # conda install -y -c conda-forge faiss-gpu                                        # efficient similarity search and clustering
     
     pip install faiss-cpu
     pip install faiss-gpu
@@ -198,4 +196,3 @@ From: ubuntu:20.04
     # Clone the chemical checker package (used as fallback)
     cd /opt
     git clone http://gitlabsbnb.irbbarcelona.org/packages/chemical_checker.git
-
