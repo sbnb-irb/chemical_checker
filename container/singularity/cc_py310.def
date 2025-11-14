@@ -53,14 +53,14 @@ From: ubuntu:20.04
     export PIPENV_INSTALL_TIMEOUT=3600   # 1h timeout on pip install commands 
     export PIP_DEFAULT_TIMEOUT=3600
 
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
     # create and activate conda
     conda update conda -y
     . /opt/miniconda3/etc/profile.d/conda.sh
 
     # using mamba for speedup
-    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
-    conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
-
+    
     conda install -q -y -n base -c conda-forge mamba
     conda config --add channels conda-forge
     mamba update -q -n base mamba
