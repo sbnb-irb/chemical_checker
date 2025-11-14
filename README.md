@@ -66,10 +66,10 @@ Generating such an image requires roughly 20 minutes:
                     sudo make -C ./builddir install
 
 
-2. Clone this repository to your code folder:
+2. Clone this repository to your code folder, you must use the git lfs (https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage):
         
         cd ~ && mkdir -p code && cd code
-        git clone https://github.com/sbnb-irb/chemical-checker.git
+        git lfs clone https://github.com/sbnb-irb/chemical-checker.git
 
 3. Run the setup script (this script will require to type your password) with:
 
