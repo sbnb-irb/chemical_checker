@@ -5,7 +5,7 @@ The **Chemical Checker (CC)** is a resource of small molecule signatures. In the
 * For a quick exploration of what this resource enables, please visit the [CC web app](http://chemicalchecker.org).
 * For full documentation of the python package, please see the [Documentation](http://packages.sbnb-pages.irbbarcelona.org/chemical_checker).
 * Concepts and methods are best described in the original CC publication, [Duran-Frigola et al. 2019](https://biorxiv.org/content/10.1101/745703v1).
-* For more information about this repository, discussion, notes, etc... please refer to our [Wiki page](http://gitlabsbnb.irbbarcelona.org/packages/chemical_checker/wikis/home).
+* For more information about this repository, discussion, notes, etc... please refer to our [Wiki page](http://gitlabsbnb-old.irbbarcelona.org/packages/chemical_checker/wikis/home).
 
 The **Chemical Checker Repository** holds the current implementation of the CC in our `SB&NB` laboratory. As such, the repository contains a significant number of functionalities and data not presented in the primary CC manuscript. The repository follows this directory structure:
 
@@ -20,7 +20,7 @@ Due to the strong computational requirements of our pipeline, the code has been 
 
 * through a [REST API](https://chemicalchecker.com/help),
 * downloaded as [data files](https://chemicalchecker.com/downloads) or 
-* predicted from SMILES with the [Signaturizer](http://gitlabsbnb.irbbarcelona.org/packages/signaturizer).
+* predicted from SMILES with the [Signaturizer](https://github.com/sbnb-irb/signaturizer).
 
 ## Chemical Checker `lite`
 
@@ -69,7 +69,7 @@ Generating such an image requires roughly 20 minutes:
 2. Clone this repository to your code folder:
         
         cd ~ && mkdir -p code && cd code
-        git clone http://gitlabsbnb.irbbarcelona.org/packages/chemical_checker.git
+        git clone https://github.com/sbnb-irb/chemical-checker.git
 
 3. Run the setup script (this script will require to type your password) with:
 
@@ -222,8 +222,8 @@ Select the new version number. Consider that it is not possible to re-publish wi
 
 Bump (e.g. 1.0.1 -> 1.0.2 or 1.1.0) the version number in the following files:
 
-* [package/chemicalchecker/__init__.py](http://gitlabsbnb.irbbarcelona.org/packages/chemical_checker/-/blob/master/package/chemicalchecker/__init__.py)
-* [package/setup.py](http://gitlabsbnb.irbbarcelona.org/packages/chemical_checker/-/blob/master/package/setup.py)
+* [package/chemicalchecker/__init__.py](https://github.com/sbnb-irb/chemical-checker/blob/master/package/chemicalchecker/__init__.py)
+* [package/setup.py](https://github.com/sbnb-irb/chemical-checker/blob/master/package/setup.py)
 
 Push these changes.
 
