@@ -195,4 +195,4 @@ From: ubuntu:20.04
     
     # Clone the chemical checker package (used as fallback)
     cd /opt
-    git clone http://gitlabsbnb.irbbarcelona.org/packages/chemical_checker.git
+    git clone https://github.com/sbnb-irb/chemical-checker.git
