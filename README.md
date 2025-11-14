@@ -73,7 +73,7 @@ Generating such an image requires roughly 20 minutes:
 
 3. Run the setup script (this script will require to type your password) with:
 
-        cd chemical_checker && sh setup/setup_chemicalchecker.sh
+        cd chemical-checker && sh setup/setup_chemicalchecker.sh
 
 ## Running `Vanilla` Chemical Checker
 
@@ -93,7 +93,7 @@ _**N.B.** If you are using another shell (e.g. zsh) just copy the chemcheck alia
 If you are contributing with code to the CC you can run the singularity image specifying your local develop branch:
 
 ```bash
-chemcheck -d /path/to/your/code/chemical_checker/package/
+chemcheck -d /path/to/your/code/chemical-checker/package/
 ```
     
 ## Running with alternative config file
@@ -183,7 +183,7 @@ umount /aloy
 
 1. You will have to enter the singularity sandbox
 
-        cd ~/chemical_checker
+        cd ~/chemical-checker
         sudo singularity shell --writable sandbox
 
 2. Install the package/software and exit the image
