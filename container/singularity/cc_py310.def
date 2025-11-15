@@ -202,4 +202,4 @@ From: ubuntu:20.04
     ./install.sh
     
     cd /opt
-    git clone https://github.com/sbnb-irb/chemical-checker.git
+    git clone https://github.com/sbnb-irb/chemical_checker.git
