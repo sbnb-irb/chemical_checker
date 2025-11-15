@@ -81,8 +81,8 @@ From: ubuntu:20.04
     conda install -y -c pytorch pytorch torchvision torchaudio cudatoolkit=11.3      # pytorch and cuda
     # conda install -y -c conda-forge faiss-gpu                                        # efficient similarity search and clustering
     
-    pip install faiss-cpu
     pip install faiss-gpu
+    pip install faiss-cpu==1.8.0
     
     # the package which break more easily is faiss so we test it after installing packages that might uninstall and change numpy
     alias test_faiss='python -c "import faiss, numpy; faiss.Kmeans(10, 20).train(numpy.random.rand(1000, 10).astype(numpy.float32))"'
