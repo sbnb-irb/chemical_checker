@@ -1,16 +1,3 @@
-"""
-This package contains functionality to transform documents (strings) into vectors, and calculate
-similarities between documents.
-
-"""
-
-__version__ = '4.3.2.dev0'
-
-import logging
-
-from gensim import parsing, corpora, matutils, interfaces, models, similarities, utils  # noqa:F401
-
-
-logger = logging.getLogger('gensim')
-if not logger.handlers:  # To ensure reload() doesn't add another one
-    logger.addHandler(logging.NullHandler())
+version https://git-lfs.github.com/spec/v1
+oid sha256:bce44dba88a933a6374223c3de2b11118d4f6b9bf3abe5c8ce1fb6d45c2c6831
+size 437

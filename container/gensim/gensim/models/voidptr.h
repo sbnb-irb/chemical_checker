@@ -1,17 +1,3 @@
-#include <Python.h>
-
-#if PY_VERSION_HEX >= 0x03020000
-
-/*
-** compatibility with python >= 3.2, which doesn't have CObject anymore
-*/
-static void * PyCObject_AsVoidPtr(PyObject *obj)
-{
-    void *ret = PyCapsule_GetPointer(obj, NULL);
-    if (ret == NULL) {
-        PyErr_Clear();
-    }
-    return ret;
-}
-
-#endif
+version https://git-lfs.github.com/spec/v1
+oid sha256:ce33d8317c0c0edeb3c656f6998911e0028aad6c022cf8f0ec8a290d713c1d1a
+size 310

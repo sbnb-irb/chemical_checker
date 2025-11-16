@@ -1,9 +1,3 @@
-:mod:`models.fasttext_inner` -- Cython routines for training FastText models
-============================================================================
-
-.. automodule:: gensim.models.fasttext_inner
-    :synopsis: Optimized Cython routines for training FastText models
-    :members:
-    :inherited-members:
-    :undoc-members:
-    :show-inheritance:
+version https://git-lfs.github.com/spec/v1
+oid sha256:896f6f20a21a550a908707e2c44c66134c5f1269f1315f2024a347240785fb1c
+size 351

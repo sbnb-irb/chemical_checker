@@ -1,3 +1,3 @@
-#!/bin/bash
-pip install --upgrade pip
-pip install --timeout=60 --trusted-host 28daf2247a33ed269873-7b1aad3fab3cc330e1fd9d109892382a.r6.cf2.rackcdn.com --find-links http://28daf2247a33ed269873-7b1aad3fab3cc330e1fd9d109892382a.r6.cf2.rackcdn.com/ "$@"
+version https://git-lfs.github.com/spec/v1
+oid sha256:c0fa216adcfa89319fe01193f3f52584e81886a7f1586e4793c736041da36371
+size 250

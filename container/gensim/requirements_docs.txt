@@ -1,14 +1,3 @@
-Pyro4==4.77
-Sphinx==3.5.2
-annoy==1.16.2
-memory-profiler==0.55.0
-nltk==3.4.5
-nmslib==2.1.1
-pandas==1.2.3
-POT==0.8.1
-scikit-learn==0.24.1
-sphinx-gallery==0.8.2
-sphinxcontrib-napoleon==0.7
-sphinxcontrib-programoutput==0.15
-statsmodels==0.12.2
-testfixtures==6.17.1
+version https://git-lfs.github.com/spec/v1
+oid sha256:5ab274be463d295753a98a953b2b62bf25a74bcadab4589e691ac7c5bcd76a5d
+size 261

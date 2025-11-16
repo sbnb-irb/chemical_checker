@@ -1,9 +1,3 @@
-:mod:`corpora.sharded_corpus` -- Corpus stored in separate files
-================================================================
-
-.. automodule:: gensim.corpora.sharded_corpus
-    :synopsis: Numpy arrays on disk for iterative processing 
-    :members:
-    :inherited-members:
-    :undoc-members:
-    :show-inheritance:
+version https://git-lfs.github.com/spec/v1
+oid sha256:0b637bb30bfff35a47a16ed8174d0676cff86a89dd1aa1a4f17119d1a714d551
+size 320

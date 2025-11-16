@@ -1,10 +1,3 @@
-:mod:`models.keyedvectors` -- Store and query word vectors
-==========================================================
-
-.. automodule:: gensim.models.keyedvectors
-    :synopsis: Store and query word vectors
-    :members:
-    :inherited-members:
-    :undoc-members:
-    :show-inheritance:
-    :special-members: __getitem__, __setitem__, __contains__
+version https://git-lfs.github.com/spec/v1
+oid sha256:3010b64c2652fedd3eb6b951c0c33865f9890dd302082cfe2e786f52c0c7f71f
+size 348

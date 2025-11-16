@@ -1,10 +1,3 @@
-:mod:`topic_coherence.text_analysis` -- Analyzing the texts of a corpus to accumulate statistical information about word occurrences
-====================================================================================================================================
-
-.. automodule:: gensim.topic_coherence.text_analysis
-    :synopsis: Analyzing the texts of a corpus to accumulate statistical information about word occurrences
-    :members:
-    :inherited-members:
-    :undoc-members:
-    :show-inheritance:
-    :special-members: __getitem__
+version https://git-lfs.github.com/spec/v1
+oid sha256:cb40fc407fd54e5a232938982981c0aa195fe0b2939c8e25059f55d3ca02ecbd
+size 543

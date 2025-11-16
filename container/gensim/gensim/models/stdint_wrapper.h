@@ -1,19 +1,3 @@
-/*
- * This file is here to support older versions of the MSVC compiler that don't
- * have stdint.h.
- */
-#ifdef _MSC_VER
-    #ifndef _MSC_STDINT_H_
-        #if _MSC_VER < 1300
-           typedef unsigned char     uint8_t;
-           typedef unsigned int      uint32_t;
-           typedef char              int8_t;
-        #else
-           typedef unsigned __int8   uint8_t;
-           typedef unsigned __int32  uint32_t;
-           typedef char              int8_t;
-        #endif
-    #endif
-#else
-   #include <stdint.h>
-#endif
+version https://git-lfs.github.com/spec/v1
+oid sha256:4c5ae8ba815a06a15959374721e50c6b683962a2df13d561026ff11cebafc369
+size 527

@@ -1,9 +1,3 @@
-:mod:`scripts.word2vec_standalone` -- Train word2vec on text file CORPUS
-========================================================================
-
-.. automodule:: gensim.scripts.word2vec_standalone
-    :synopsis: Train word2vec on text file CORPUS
-    :members:
-    :inherited-members:
-    :undoc-members:
-    :show-inheritance:
+version https://git-lfs.github.com/spec/v1
+oid sha256:2a27bad626e727506a2336c00f7b681be7d9f6dc29607a70cfa99225a02b0ef4
+size 329

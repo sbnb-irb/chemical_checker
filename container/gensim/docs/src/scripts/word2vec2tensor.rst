@@ -1,9 +1,3 @@
-:mod:`scripts.word2vec2tensor` -- Convert the word2vec format to Tensorflow 2D tensor
-=====================================================================================
-
-.. automodule:: gensim.scripts.word2vec2tensor
-    :synopsis: Convert the word2vec format to Tensorflow 2D tensor
-    :members:
-    :inherited-members:
-    :undoc-members:
-    :show-inheritance:
+version https://git-lfs.github.com/spec/v1
+oid sha256:5d3dcdcf422fdb074590addfa9d2a97c81041d94a6d3300ba2cdb42b66d1bffd
+size 368

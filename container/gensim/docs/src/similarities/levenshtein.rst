@@ -1,8 +1,3 @@
-:mod:`similarities.levenshtein` -- Fast soft-cosine semantic similarity search
-==============================================================================
-
-.. automodule:: gensim.similarities.levenshtein
-    :synopsis: Fast fuzzy search between strings, using the Soft-Cosine Semantic Similarity
-    :members:
-    :inherited-members:
-
+version https://git-lfs.github.com/spec/v1
+oid sha256:3020896cf0bd2a2d802b6090cb2d80ddf6185b42e898712285ae103319d674cc
+size 338

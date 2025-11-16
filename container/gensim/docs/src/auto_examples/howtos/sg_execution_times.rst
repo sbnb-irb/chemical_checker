@@ -1,18 +1,3 @@
-
-:orphan:
-
-.. _sphx_glr_auto_examples_howtos_sg_execution_times:
-
-Computation times
-=================
-**56:58.813** total execution time for **auto_examples_howtos** files:
-
-+----------------------------------------------------------------------------------------+-----------+-----------+
-| :ref:`sphx_glr_auto_examples_howtos_run_doc2vec_imdb.py` (``run_doc2vec_imdb.py``)     | 56:58.813 | 3772.5 MB |
-+----------------------------------------------------------------------------------------+-----------+-----------+
-| :ref:`sphx_glr_auto_examples_howtos_run_compare_lda.py` (``run_compare_lda.py``)       | 00:00.000 | 0.0 MB    |
-+----------------------------------------------------------------------------------------+-----------+-----------+
-| :ref:`sphx_glr_auto_examples_howtos_run_doc.py` (``run_doc.py``)                       | 00:00.000 | 0.0 MB    |
-+----------------------------------------------------------------------------------------+-----------+-----------+
-| :ref:`sphx_glr_auto_examples_howtos_run_downloader_api.py` (``run_downloader_api.py``) | 00:00.000 | 0.0 MB    |
-+----------------------------------------------------------------------------------------+-----------+-----------+
+version https://git-lfs.github.com/spec/v1
+oid sha256:b063618efa73b04893bdbbf4ec8d468b5393fce45bfcd690edaf99ee89fbf15f
+size 1209

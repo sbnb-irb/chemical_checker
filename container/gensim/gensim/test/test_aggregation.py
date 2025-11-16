@@ -1,30 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-#
-# Copyright (C) 2010 Radim Rehurek <radimrehurek@seznam.cz>
-# Licensed under the GNU LGPL v2.1 - https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html
-
-"""
-Automated tests for checking transformation algorithms (the models package).
-"""
-
-import logging
-import unittest
-
-from gensim.topic_coherence import aggregation
-
-
-class TestAggregation(unittest.TestCase):
-    def setUp(self):
-        self.confirmed_measures = [1.1, 2.2, 3.3, 4.4]
-
-    def test_arithmetic_mean(self):
-        """Test arithmetic_mean()"""
-        obtained = aggregation.arithmetic_mean(self.confirmed_measures)
-        expected = 2.75
-        self.assertEqual(obtained, expected)
-
-
-if __name__ == '__main__':
-    logging.root.setLevel(logging.WARNING)
-    unittest.main()
+version https://git-lfs.github.com/spec/v1
+oid sha256:0f65af71cd0839874640bc8d525ec0b03a7a49331d2726c121521f72d86464b6
+size 797

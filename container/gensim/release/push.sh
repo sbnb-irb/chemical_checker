@@ -1,11 +1,3 @@
-#
-# Push local branches to upstream (github.com).
-#
-# Run this after you've verified the results of merge.sh.
-#
-set -euxo pipefail
-release=$RELEASE
-
-git push --tags upstream master
-git push upstream develop
-git push upstream release-"$release"
+version https://git-lfs.github.com/spec/v1
+oid sha256:b3c9a6bb40df1583b26ee0abf6bbc72c7453510facc41fc03fb8293b0978b2a9
+size 244

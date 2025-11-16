@@ -1,10 +1,3 @@
-{
-  "Rules": [
-    {
-      "Expiration": {"Days": 30},
-      "Filter": {"Prefix": ""},
-      "ID": "Delete all files older than 30 days to save storage costs",
-      "Status": "Enabled"
-    }
-  ]
-}
+version https://git-lfs.github.com/spec/v1
+oid sha256:f991821bcd14915f701004898e74c147aa682c4d91a7d285d629605b9e0aad15
+size 198
