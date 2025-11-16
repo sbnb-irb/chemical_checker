@@ -1,7 +1,3 @@
-cp: cannot create directory '/aloy/web_checker/package_cc/2024_02/exemplary': Permission denied
-cp: cannot create directory '/aloy/web_checker/package_cc/2024_02/full': Permission denied
-cp: cannot create regular file '/aloy/web_checker/package_cc/2024_02/metadata.json.zip': Permission denied
-cp: cannot create directory '/aloy/web_checker/package_cc/2024_02/plots_web': Permission denied
-cp: cannot create directory '/aloy/web_checker/package_cc/2024_02/reference': Permission denied
-cp: cannot create directory '/aloy/web_checker/package_cc/2024_02/sign_links': Permission denied
-cp: cannot stat '/aloy/web_checker/package_cc/2024/sign_links/sign3*full*.h5': No such file or directory
+version https://git-lfs.github.com/spec/v1
+oid sha256:704484656de8dae699ec62e8d7cbb30103bc3b579017a2650e68dda3d3c99d48
+size 370396
