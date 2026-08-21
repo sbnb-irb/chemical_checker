@@ -35,7 +35,7 @@ class StatsPlots(BaseTask):
             os.mkdir(plots_dir)
         self.__log.info("Stats plots are saved in {}".format(plots_dir))
         try:
-            statsplot = CCStatsPlot(cc, width=30, height=30, dpi=70, save=True, save_format='png', save_dir=plots_dir)
+            statsplot = CCStatsPlot(cc, width=30, height=30, dpi=200, save=True, save_format='png', save_dir=plots_dir)
             statsplot.plot_all()
             self.mark_ready()
         except Exception as e:
