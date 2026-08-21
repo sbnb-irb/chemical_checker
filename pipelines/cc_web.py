@@ -103,20 +103,29 @@ def main(args):
     for arg in vars(args):
         main._log.info('[ ARGS ] {:<25s}: {}'.format(arg, getattr(args, arg)))
 
+    # ZINC15/ZINC20 now answer every request with an HTML CAPTCHA page instead
+    # of the requested file. It comes back as HTTP 200, so `Downloader` cannot
+    # tell the difference and writes the HTML into the .smi, which then parses
+    # to zero molecules. Every library is therefore read from a local snapshot
+    # downloaded by hand through a browser; the original URL is kept in a
+    # comment above each entry so the file can be refreshed the same way.
     libraries = {
         "apd": [
             'Approved drugs',
             'Approved drug molecules from DrugBank',
-            'http://zinc15.docking.org/catalogs/dbap/'
-            'items.txt?count=all&output_fields=smiles%20zinc_id',
+            # http://zinc15.docking.org/catalogs/dbap/
+            #   items.txt?count=all&output_fields=smiles%20zinc_id
+            'file:///aloy/web_checker/repo_data/zinc_libs/apd/dbap-items.txt',
             'zinc'],
         "exd": [
             'Experimental drugs',
             'Experimental and investigational drug molecules from DrugBank',
-            'http://zinc15.docking.org/catalogs/dbex/'
-            'items.txt?count=all&output_fields=smiles%20zinc_id;'
-            'http://zinc15.docking.org/catalogs/dbin/'
-            'items.txt?count=all&output_fields=smiles%20zinc_id',
+            # http://zinc15.docking.org/catalogs/dbex/
+            #   items.txt?count=all&output_fields=smiles%20zinc_id
+            # http://zinc15.docking.org/catalogs/dbin/
+            #   items.txt?count=all&output_fields=smiles%20zinc_id
+            'file:///aloy/web_checker/repo_data/zinc_libs/exd/dbex-items.txt;'
+            'file:///aloy/web_checker/repo_data/zinc_libs/exd/dbin-items.txt',
             'zinc'],
         "met": [
             'Human metabolites',
@@ -136,24 +145,33 @@ def main(args):
         "pwck": [
             'Prestwick chemical library',
             'Prestwick commercial collection',
-            'http://zinc15.docking.org/catalogs/prestwick/'
-            'items.txt?count=all&output_fields=smiles%20zinc_id',
+            # http://zinc15.docking.org/catalogs/prestwick/
+            #   items.txt?count=all&output_fields=smiles%20zinc_id
+            'file:///aloy/web_checker/repo_data/zinc_libs/pwck/'
+            'prestwick-items.txt',
             'zinc'],
         "nihcc": [
             'NIH clinical collection',
             'NIH clinical collection',
-            'http://zinc15.docking.org/catalogs/nihcc/'
-            'items.txt?count=all&output_fields=smiles%20zinc_id',
+            # http://zinc15.docking.org/catalogs/nihcc/
+            #   items.txt?count=all&output_fields=smiles%20zinc_id
+            'file:///aloy/web_checker/repo_data/zinc_libs/nihcc/'
+            'nihcc-items.txt',
             'zinc'],
         "ncidiv": [
             'NCI diversity collection',
             'NCI diversity collection',
-            'http://zinc15.docking.org/catalogs/ncidiv/items.txt?count=all&output_fields=smiles%20zinc_id',
+            # http://zinc15.docking.org/catalogs/ncidiv/
+            #   items.txt?count=all&output_fields=smiles%20zinc_id
+            'file:///aloy/web_checker/repo_data/zinc_libs/ncidiv/'
+            'ncidiv-items.txt',
             'zinc'],
         "tool": [
             'Tool compounds',
             'Tool compounds',
-            'http://zinc15.docking.org/toolcompounds.smi?count=all',
+            # http://zinc15.docking.org/toolcompounds.smi?count=all
+            'file:///aloy/web_checker/repo_data/zinc_libs/tool/'
+            'toolcompounds.smi',
             'zinc']
     }
 

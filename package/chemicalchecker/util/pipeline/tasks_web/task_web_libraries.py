@@ -127,6 +127,7 @@ class Libraries(BaseTask):
         params["elements"] = self.libraries
         params["wait"] = True
         params["cpu"] = 1
+        params["mem_by_core"] = 16
         # job command
         cc_config_path = self.config.config_path
         cc_package = os.path.join(self.config.PATH.CC_REPO, 'package')
