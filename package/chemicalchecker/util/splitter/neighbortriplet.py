@@ -518,206 +518,263 @@ class AdriaTripletSampler(BaseTripletSampler):
 
     def generate_triplets(self, num_triplets=1e6, frac_hard=0.3,
                           frac_neig=0.05, metric='jaccard', low_thr=0.1,
-                          high_thr=0.5, plot=True):
+                          high_thr=0.5, low_percentile=None,
+                          high_percentile=None, seed=None, plot=True):
         """Generate triplets.
 
-        This function generate triplets defining positive and negatives
-        assuming a binary triplet signature (e.g. sign0) and computing all the
-        similarities across molecules.
+        Positives of each anchor are its most similar molecules in the binary
+        triplet signature (similarity >= ``high_thr``, or at least its top
+        ``frac_neig`` molecules with similarity >= ``low_thr``), drawn with
+        probability proportional to similarity; negatives are the remaining
+        molecules. ``frac_hard`` of the triplets are hard: positives from the
+        top quartile of the anchor's neighbours, negatives from the lower
+        quartiles.
+
+        Molecules without any active feature and molecules whose closest
+        neighbour is below ``low_thr`` get no triplets; both are logged.
 
         Args:
             num_triplets(int): Total number of triplets to generate.
             frac_hard(float): Fraction of triplets to be of the hard case.
             frac_neig(float): Fraction of neighbor we will consider.
-            metric(std): Metric to compute similarities, must be a distance
-                metric that can be converted to similarity by (1-dist)
+            metric(str): Metric to compute similarities, must be a distance
+                metric for binary data that can be converted to similarity
+                by (1-dist).
             low_thr(float): Low similarity threshold, any pair below this is
                 negative.
-            high_thr(float): High similarity threshold, any pair above this is 
+            high_thr(float): High similarity threshold, any pair above this is
                 positive.
+            low_percentile(float): If given, overrides ``low_thr`` with this
+                percentile of all pairwise similarities (e.g. 60).
+            high_percentile(float): If given, overrides ``high_thr`` with this
+                percentile of all pairwise similarities (e.g. 99).
+            seed(int): Seed for reproducible triplets.
             plot(bool): Save plots of the sampling.
+
+        Raises:
+            ValueError: If the triplet signature is not binary or lacks some
+                of the molecules to represent.
         """
         self.__log.info('Generating Triplets...')
         self.__log.info('Triplets generated based on: %s' %
                         self.triplet_signature.data_path)
         self.__log.info('Triplets representation: %s' %
                         self.mol_signature.data_path)
-        # this works with triplet signature being sign0
+        rng = np.random.default_rng(seed)
+        mol_keys = np.array(self.mol_signature.keys)
         df = self.triplet_signature.as_dataframe()
-        # later we will be saving the molecular representation in a different
-        # signature (e.g. sign2), we need to use only those molecules
-        df = df.loc[self.mol_signature.keys]
-        # Getting similarities
-        all_similarities = 1 - pdist(df, metric)
-        df2 = pd.DataFrame(squareform(all_similarities), index=df.index.values,
-                           columns=df.index.values)
+        missing = np.setdiff1d(mol_keys, df.index.values)
+        if len(missing) > 0:
+            raise ValueError(
+                '%i molecules to represent are missing from the triplet '
+                'signature %s (e.g. %s)' % (len(missing),
+                                            self.triplet_signature.data_path,
+                                            missing[:3]))
+        # molecules are represented by another signature (e.g. sign2),
+        # we need to use only those molecules
+        df = df.loc[mol_keys]
+        values = df.values
+        if not np.isin(values, [0, 1]).all():
+            raise ValueError(
+                'AdriaTripletSampler needs a binary triplet signature, but '
+                '%s has values in [%.3g, %.3g]; pass a binary signature '
+                '(e.g. sign0 of a binary space) as triplet_sign to '
+                'sign3.fit, or binarize the data first' % (
+                    self.triplet_signature.data_path,
+                    np.nanmin(values), np.nanmax(values)))
+        values = values.astype(bool)
 
-        # Defining derived parameters
-        n_neigh = int(df2.shape[0]*frac_neig)
-        frac_soft = 1 - frac_hard
-        n_trip = int(np.round(num_triplets*frac_soft/df2.shape[0]))
-        n_hard_trip = int(np.round(num_triplets*frac_hard/df2.shape[0]))
+        # molecules without any active feature are identical to each other
+        # under jaccard, so they are left out
+        active = values.any(axis=1)
+        self.__log.info('Molecules without active features (no triplets): '
+                        '%i of %i' % (np.sum(~active), len(active)))
+        values = values[active]
+        keys = mol_keys[active]
 
-        ixs = np.array(df2.max()) >= low_thr
-        df2 = df2.iloc[ixs, ixs]
+        # getting similarities
+        all_similarities = 1 - pdist(values, metric)
+        similarity = squareform(all_similarities).astype(np.float32)
+        np.fill_diagonal(similarity, np.nan)  # masking itself
+        if low_percentile is not None:
+            low_thr = np.percentile(all_similarities, low_percentile)
+        if high_percentile is not None:
+            high_thr = np.percentile(all_similarities, high_percentile)
+        self.__log.info('Similarity thresholds: low %.3f, high %.3f' %
+                        (low_thr, high_thr))
 
-        dgs = np.array(df2.columns)
+        # molecules whose closest neighbour is below low_thr get no triplets
+        closest = np.nanmax(similarity, axis=1)
+        kept = closest >= low_thr
+        self.__log.info('Molecules with closest neighbour below low_thr '
+                        '(no triplets): %i' % np.sum(~kept))
+        similarity = similarity[np.ix_(kept, kept)]
+        keys = keys[kept]
+        n_mols = len(keys)
+        if n_mols < 3:
+            raise ValueError('Only %i molecules left to sample triplets '
+                             'from; lower low_thr' % n_mols)
+
+        # defining derived parameters
+        n_neigh = int(n_mols * frac_neig)
+        n_trip = int(np.round(num_triplets * (1 - frac_hard) / n_mols))
+        n_hard_trip = int(np.round(num_triplets * frac_hard / n_mols))
+
         triplets = []
         hard_triplets = {0: [], 1: [], 2: []}
-        for ix, dg in tqdm(enumerate(df2.index.values), total=df2.shape[0]):
-            _triplets = []
-            _hard_triplets = {0: [], 1: [], 2: []}
-
-            # Getting similarity vector
-            v = np.array(df2.iloc[ix])
-            v[ix] = np.nan  # masking itself
-
-            # Getting pos
-            ixs = np.where(v >= high_thr)[0]
-            if len(ixs) < n_neigh:
-                ixs = np.argsort(v)[::-1]
-                ixs = ixs[v[ixs] >= low_thr]
-                if len(ixs) == 0:
+        all_idxs = np.arange(n_mols)
+        for anchor in tqdm(range(n_mols), total=n_mols):
+            v = similarity[anchor]
+            # getting positives
+            pos_mask = v >= high_thr
+            if np.sum(pos_mask) < n_neigh:
+                candidates = np.where(v >= low_thr)[0]
+                if len(candidates) == 0:
                     continue
-                cutoff = v[ixs][min([n_neigh-1, len(ixs)-1])]
-                ixs = v >= cutoff
-
-            neighs = dgs[ixs]
-            similarities = v[ixs]
+                ranked = np.sort(v[candidates])[::-1]
+                cutoff = ranked[min(n_neigh - 1, len(ranked) - 1)]
+                pos_mask = v >= cutoff
+            neighs = np.where(pos_mask)[0]
+            similarities = v[neighs]
             probs = similarities / np.sum(similarities)
+            # getting negatives: everything else but the anchor itself
+            neg_mask = ~pos_mask
+            neg_mask[anchor] = False
+            negs = all_idxs[neg_mask]
+            if len(negs) == 0:
+                continue
 
-            # Getting negs
-            # minor fix, remove itself
-            negs = np.array(list(set(dgs)-set(neighs.tolist()+[dg])))
+            # easy triplets
+            triplets.append(np.column_stack([
+                np.full(n_trip, anchor),
+                rng.choice(neighs, size=n_trip, p=probs),
+                rng.choice(negs, size=n_trip)]))
 
-            # --Getting triplets
-            # ----Negs
-            # the soft triplets (easy) 70%
-            for _ in range(n_trip):
-                _triplets.append([dg, np.random.choice(neighs, p=probs),
-                                  np.random.choice(negs)])
-            triplets.extend(_triplets)
-
-            # --Adding hard triplets
+            # hard triplets: positives from the top quartile of the
+            # neighbours, negatives from each lower quartile
             scores = np.unique(similarities)
-            # unique and sort
             cutoffs = np.unique([np.percentile(scores, pc)
                                  for pc in [0, 25, 50, 75, 100]])
             labels = np.arange(len(cutoffs))[:-1]
             groups = np.array(pd.cut(similarities, cutoffs, labels=labels))
             labels = [x for x in labels if x in groups]
-
             if len(labels) > 1:
-                n_subhard = int(np.ceil(n_hard_trip/(len(labels)-1)))
+                n_subhard = int(np.ceil(n_hard_trip / (len(labels) - 1)))
+                top = groups == labels[-1]
+                hard_positives = neighs[top]
+                hard_probs = similarities[top] / np.sum(similarities[top])
+                for label in labels[:-1]:
+                    hard_negatives = neighs[groups == label]
+                    hard_triplets[label].append(np.column_stack([
+                        np.full(n_subhard, anchor),
+                        rng.choice(hard_positives, size=n_subhard,
+                                   p=hard_probs),
+                        rng.choice(hard_negatives, size=n_subhard)]))
 
-                hard_positives = neighs[groups == labels[-1]]
-                hard_probs = similarities[groups == labels[-1]]
-                hard_probs = hard_probs/np.sum(hard_probs)
-
-                for i in range(len(labels)-1):
-                    hard_negatives = neighs[groups == labels[i]]
-                    assert len(set(hard_negatives) & set(hard_positives)) == 0
-                    for _ in range(n_subhard):
-                        _hard_triplets[labels[i]].append([dg, np.random.choice(
-                            hard_positives, p=hard_probs),
-                            np.random.choice(hard_negatives)])
-
-            hard_triplets[0].extend(_hard_triplets[0])
-            hard_triplets[1].extend(_hard_triplets[1])
-            hard_triplets[2].extend(_hard_triplets[2])
-
-        all_triplets = list(triplets)
-        for g in list(hard_triplets):
-            all_triplets.extend(list(hard_triplets[g]))
-        all_triplets = np.array(all_triplets)
+        empty = np.empty((0, 3), dtype=int)
+        triplets = np.vstack(triplets) if triplets else empty
+        hard_triplets = {g: np.vstack(t) if t else empty
+                         for g, t in hard_triplets.items()}
+        all_triplets = np.vstack([triplets] + list(hard_triplets.values()))
+        if len(all_triplets) == 0:
+            raise ValueError('No triplets could be sampled; check the '
+                             'thresholds and the triplet signature')
 
         self.__log.info('triplets:      %i' % len(all_triplets))
         self.__log.info('easy triplets: %i (%.2f%%)' %
                         (len(triplets),
-                            (100*(len(triplets))/len(all_triplets))))
-        total_hard = np.sum([len(hard_triplets[g]) for g in hard_triplets])
+                         (100 * (len(triplets)) / len(all_triplets))))
+        total_hard = np.sum([len(t) for t in hard_triplets.values()])
         self.__log.info('hard triplets: %i (%.2f%%)' %
-                        (total_hard, (100*(total_hard/len(all_triplets)))))
+                        (total_hard, (100 * (total_hard / len(all_triplets)))))
         for g in hard_triplets:
             self.__log.info('\t--> Q%i vs Q4: %i (%.2f%%)' %
-                            (g+1, len(hard_triplets[g]),
-                             100*len(hard_triplets[g])/len(all_triplets)))
+                            (g + 1, len(hard_triplets[g]),
+                             100 * len(hard_triplets[g]) / len(all_triplets)))
 
-        all_triplets = pd.DataFrame(
-            all_triplets,
-            columns=['anchor', 'pos', 'neg']).sort_values(
-            ['anchor', 'pos', 'neg']).reset_index(drop=True)
-        ink_pos = dict(zip(self.mol_signature.keys, np.arange(len(df))))
-        all_triplets_idxs = np.vectorize(ink_pos.get)(all_triplets.values)
+        # from positions among sampled molecules to rows of mol_signature
+        mol_pos = dict(zip(mol_keys, np.arange(len(mol_keys))))
+        to_mol_idx = np.array([mol_pos[k] for k in keys])
+        all_triplets_idxs = to_mol_idx[all_triplets]
+        all_triplets_idxs = all_triplets_idxs[
+            np.lexsort(all_triplets_idxs.T[::-1])]
 
         if plot:
-            self.__log.info('Generating Triplets Plot...')
-            import matplotlib.pyplot as plt
-            import seaborn as sns
-            fig, axes = plt.subplots(2, 2, figsize=(10, 10), dpi=100)
-            ax1, ax2, ax3, ax4 = axes.flat
-
-            # which fraction of mols as a give # of features?
-            sns.ecdfplot(df.sum(1), ax=ax1)
-            ax1.set_title('# Features distribution')
-
-            # what is the distribution of similarities?
-            # which similarity will we always consider as positive or negative?
-            ax2.set_title('Similarity distribution, pos./neg. definition')
-            pc = int((1 - frac_neig) * 100)
-            pc_val = np.percentile(all_similarities, pc)
-            ax2.axvline(low_thr, label='low_thr %.2f' % low_thr, ls='-.',
-                        color='.5')
-            ax2.axvline(pc_val, label='%.2f (P%i)' % (pc_val, pc), color='.7')
-            ax2.axvline(high_thr, label='high_thr %.2f' % high_thr, ls='--',
-                        color='.5')
-            sns.histplot(all_similarities, kde=True, ax=ax2)
-            ax2.legend()
-
-            # what fraction of mols would we loose (closest neigh < low_thr)?
-            sns.ecdfplot(df2.max(axis=1), ax=ax3)
-            ax3.set_xlabel('Similarity to closest neighbor')
-            ax3.axvline(low_thr, ls='-.', color='.5')
-            ax3.axvline(high_thr, ls='--', color='.5')
-            ax3.set_title('Closest neighbor of each mol.')
-            lost_mols = np.sum(df2.max() < low_thr)
-            if lost_mols > 0:
-                ax3.annotate('Lost Mols.: %i' % lost_mols,
-                             xy=(low_thr-(low_thr/10), 0), xycoords='data',
-                             xytext=(-10, -40), textcoords='offset points',
-                             arrowprops=dict(facecolor='red', shrink=0.05),
-                             horizontalalignment='right',
-                             verticalalignment='bottom')
-
-            # What's the difference in similarity between A-P and A-N?
-            ax4.set_title('Triplet difficulty and Anchor-Pos. vs. Anchor-Neg.')
-            k = df2.melt(ignore_index=False).reset_index().values
-            pair2sim = dict(zip(zip(k[:, 0], k[:, 1]), k[:, 2]))
-            v = []
-            for x in triplets:
-                pos = x[0], x[1]
-                neg = x[0], x[2]
-                if (pos in pair2sim) & (neg in pair2sim):
-                    pos = pair2sim[pos]
-                    neg = pair2sim[neg]
-                    v.append(pos-neg)
-            sns.ecdfplot(v, label='easy triplets', ax=ax4)
-            for g in hard_triplets:
-                v2 = []
-                for x in hard_triplets[g]:
-                    pos = x[0], x[1]
-                    neg = x[0], x[2]
-                    if (pos in pair2sim) & (neg in pair2sim):
-                        pos = pair2sim[pos]
-                        neg = pair2sim[neg]
-                        v2.append(pos-neg)
-                sns.ecdfplot(v2, label='hard triplets (Q%i vs Q4)' %
-                             (g+1), ax=ax4)
-            ax4.set_xlabel('pos.-neg. similarity delta')
-            ax4.legend()
-            plt.savefig(self.out_file + '.png')
+            self._plot_triplets(values, all_similarities, similarity,
+                                closest, triplets, hard_triplets, low_thr,
+                                high_thr, frac_neig, kept)
 
         self.save_triplets(all_triplets_idxs, **self.save_kwargs)
+
+    def _plot_triplets(self, values, all_similarities, similarity, closest,
+                       triplets, hard_triplets, low_thr, high_thr, frac_neig,
+                       kept):
+        """Save diagnostic plots of the sampling next to the output file."""
+        self.__log.info('Generating Triplets Plot...')
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        from scipy.stats import pearsonr
+        fig, axes = plt.subplots(2, 3, figsize=(15, 10), dpi=100)
+        ax1, ax2, ax3, ax4, ax5, ax6 = axes.flat
+
+        # which fraction of mols has a given # of features?
+        n_features = values.sum(1)
+        sns.ecdfplot(n_features, ax=ax1)
+        ax1.set_title('# Features distribution')
+
+        # which similarity will we always consider as positive or negative?
+        ax2.set_title('Similarity distribution, pos./neg. definition')
+        pc = int((1 - frac_neig) * 100)
+        pc_val = np.percentile(all_similarities, pc)
+        ax2.axvline(low_thr, label='low_thr %.2f' % low_thr, ls='-.',
+                    color='.5')
+        ax2.axvline(pc_val, label='%.2f (P%i)' % (pc_val, pc), color='.7')
+        ax2.axvline(high_thr, label='high_thr %.2f' % high_thr, ls='--',
+                    color='.5')
+        sns.histplot(all_similarities, kde=True, ax=ax2)
+        ax2.legend()
+
+        # what fraction of mols do we lose (closest neigh < low_thr)?
+        sns.ecdfplot(closest, ax=ax3)
+        ax3.set_xlabel('Similarity to closest neighbor')
+        ax3.axvline(low_thr, ls='-.', color='.5')
+        ax3.axvline(high_thr, ls='--', color='.5')
+        ax3.set_title('Closest neighbor of each mol. (lost: %i)' %
+                      np.sum(~kept))
+
+        # what's the difference in similarity between A-P and A-N?
+        def deltas(t):
+            return (similarity[t[:, 0], t[:, 1]] -
+                    similarity[t[:, 0], t[:, 2]])
+        ax4.set_title('Triplet difficulty and Anchor-Pos. vs. Anchor-Neg.')
+        sns.ecdfplot(deltas(triplets), label='easy triplets', ax=ax4)
+        for g, t in hard_triplets.items():
+            if len(t):
+                sns.ecdfplot(deltas(t), ax=ax4,
+                             label='hard triplets (Q%i vs Q4)' % (g + 1))
+        ax4.set_xlabel('pos.-neg. similarity delta')
+        ax4.legend()
+
+        # how often is each molecule used, and is it biased by # features?
+        all_t = np.vstack([triplets] + list(hard_triplets.values()))
+        n_kept = similarity.shape[0]
+        usage = {role: np.bincount(all_t[:, i], minlength=n_kept)
+                 for i, role in enumerate(['anchor', 'positive', 'negative'])}
+        for role, counts in usage.items():
+            sns.ecdfplot(counts, label=role, ax=ax5)
+        ax5.set_xlabel('# triplets per molecule')
+        ax5.set_title('Molecule usage per role')
+        ax5.legend()
+
+        kept_features = n_features[kept]
+        r = pearsonr(kept_features, usage['positive'])[0]
+        ax6.scatter(kept_features, usage['positive'], s=8, alpha=.5)
+        ax6.set_xlabel('# active features')
+        ax6.set_ylabel('# times used as positive')
+        ax6.set_title('Feature-count bias (Pearson r %.2f)' % r)
+        fig.tight_layout()
+        plt.savefig(self.out_file + '.png')
+        plt.close(fig)
 
 
 @logged
