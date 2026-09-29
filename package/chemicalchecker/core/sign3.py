@@ -30,7 +30,7 @@ from .preprocess import Preprocess
 
 from chemicalchecker.util import logged
 from chemicalchecker.util.splitter import OldTripletSampler, TripletIterator
-from chemicalchecker.util.splitter import BaseTripletSampler, AdriaTripletSampler
+from chemicalchecker.util.splitter import BaseTripletSampler, BinJaccardTripletSampler
 from chemicalchecker.util.parser.converter import Converter
 from chemicalchecker.database import Dataset
 

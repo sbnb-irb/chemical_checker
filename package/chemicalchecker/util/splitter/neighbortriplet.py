@@ -510,8 +510,14 @@ class PrecomputedTripletSampler(BaseTripletSampler):
 
 
 @logged
-class AdriaTripletSampler(BaseTripletSampler):
-    """The optimal Adria's way for sampling triplets in small dataset."""
+class BinJaccardTripletSampler(BaseTripletSampler):
+    """Triplets from the Jaccard similarity of binary profiles.
+
+    Suited to small spaces: positives are each molecule's most similar
+    molecules in a binary triplet signature (e.g. sign0 of a binary space),
+    drawn with probability proportional to similarity. Formerly
+    ``AdriaTripletSampler``, which remains as an alias.
+    """
 
     def __init__(self, *args, **kwargs):
         BaseTripletSampler.__init__(self, *args, **kwargs)
@@ -576,7 +582,7 @@ class AdriaTripletSampler(BaseTripletSampler):
         values = df.values
         if not np.isin(values, [0, 1]).all():
             raise ValueError(
-                'AdriaTripletSampler needs a binary triplet signature, but '
+                'BinJaccardTripletSampler needs a binary triplet signature, but '
                 '%s has values in [%.3g, %.3g]; pass a binary signature '
                 '(e.g. sign0 of a binary space) as triplet_sign to '
                 'sign3.fit, or binarize the data first' % (
@@ -775,6 +781,10 @@ class AdriaTripletSampler(BaseTripletSampler):
         fig.tight_layout()
         plt.savefig(self.out_file + '.png')
         plt.close(fig)
+
+
+# former name, kept so existing code keeps working
+AdriaTripletSampler = BinJaccardTripletSampler
 
 
 @logged

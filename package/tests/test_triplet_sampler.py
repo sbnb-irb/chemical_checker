@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from chemicalchecker.util.splitter import AdriaTripletSampler
+from chemicalchecker.util.splitter import BinJaccardTripletSampler
 
 
 class FakeSignature(object):
@@ -38,7 +39,7 @@ def binary_profiles(n_mols=60, n_features=20, n_inactive=3, seed=0):
     return pd.DataFrame(np.array(rows, dtype=int), index=keys)
 
 
-class TestAdriaTripletSampler(unittest.TestCase):
+class TestBinJaccardTripletSampler(unittest.TestCase):
 
     def setUp(self):
         self.tmp_dir = tempfile.mkdtemp()
@@ -52,7 +53,7 @@ class TestAdriaTripletSampler(unittest.TestCase):
         shutil.rmtree(self.tmp_dir)
 
     def sample(self, profiles, **kwargs):
-        sampler = AdriaTripletSampler(FakeSignature(profiles),
+        sampler = BinJaccardTripletSampler(FakeSignature(profiles),
                                       self.mol_signature, self.out_file)
         kwargs.setdefault('num_triplets', 3000)
         kwargs.setdefault('plot', False)
@@ -100,9 +101,12 @@ class TestAdriaTripletSampler(unittest.TestCase):
         self.assertTrue(os.path.isfile(self.out_file + '.png'))
 
     def test_save_triplets_leaves_default_split_names_untouched(self):
-        sampler = AdriaTripletSampler(FakeSignature(self.profiles),
+        sampler = BinJaccardTripletSampler(FakeSignature(self.profiles),
                                       self.mol_signature, self.out_file)
         triplets = np.array([[0, 1, 2]] * 10)
         sampler.save_triplets(triplets)  # the old code reversed this in place
-        defaults = AdriaTripletSampler.save_triplets.__defaults__
+        defaults = BinJaccardTripletSampler.save_triplets.__defaults__
         self.assertIn(['train', 'test'], defaults)
+
+    def test_former_name_still_works(self):
+        self.assertIs(AdriaTripletSampler, BinJaccardTripletSampler)
