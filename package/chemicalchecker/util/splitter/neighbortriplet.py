@@ -380,8 +380,9 @@ class BaseTripletSampler(object):
         # find triplets having test-test train-train and train-test
         combos = itertools.combinations_with_replacement(split_names, 2)
 
-        # reverse split names to first write test keys
-        split_names.reverse()
+        # reverse split names to first write test keys (on a copy, so the
+        # caller's list and the default argument are left untouched)
+        split_names = list(reversed(split_names))
 
         # create output file
         self.__log.info('Saving Triplets to %s', self.out_file)
@@ -466,8 +467,9 @@ class PrecomputedTripletSampler(BaseTripletSampler):
         # find triplets having test-test train-train and train-test
         combos = itertools.combinations_with_replacement(split_names, 2)
 
-        # reverse split names to first write test keys
-        split_names.reverse()
+        # reverse split names to first write test keys (on a copy, so the
+        # caller's list and the default argument are left untouched)
+        split_names = list(reversed(split_names))
 
         # create dataset
         self.__log.info('Saving Triplets to %s', out_file)
