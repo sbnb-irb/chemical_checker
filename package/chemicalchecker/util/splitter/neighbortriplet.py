@@ -517,6 +517,26 @@ class BinJaccardTripletSampler(BaseTripletSampler):
     molecules in a binary triplet signature (e.g. sign0 of a binary space),
     drawn with probability proportional to similarity. Formerly
     ``AdriaTripletSampler``, which remains as an alias.
+
+    Notes:
+        The triplet signature must be binary. Continuous data (e.g. sign1 or
+        log fold changes) has to be binarised first, for instance with one
+        "up" and one "down" feature per column beyond a cut-off, so that a
+        shared decrease counts like a shared increase. On continuous input,
+        scipy's Jaccard gives every pair similarity 0 (older versions, e.g.
+        1.11, compare the values for equality) or 1 (newer ones, e.g. 1.18,
+        treat every non-zero value as present), so the sampler refuses it.
+
+        The default thresholds (``high_thr`` 0.5, ``low_thr`` 0.1,
+        ``frac_neig`` 0.05, ``frac_hard`` 0.3) come from the 2022 M1
+        preprocessing notebooks, where they were read off the similarity
+        distribution; they have not been tuned. On sparse or noisy profiles
+        the similarities can be much lower, so check the diagnostic plot and
+        consider ``low_percentile``/``high_percentile`` instead.
+
+        A continuous alternative, not implemented here, is a weighted Jaccard
+        (Ruzicka) similarity on the non-negative up and down parts of each
+        feature, which keeps magnitudes instead of a cut-off.
     """
 
     def __init__(self, *args, **kwargs):
@@ -531,10 +551,10 @@ class BinJaccardTripletSampler(BaseTripletSampler):
         Positives of each anchor are its most similar molecules in the binary
         triplet signature (similarity >= ``high_thr``, or at least its top
         ``frac_neig`` molecules with similarity >= ``low_thr``), drawn with
-        probability proportional to similarity; negatives are the remaining
-        molecules. ``frac_hard`` of the triplets are hard: positives from the
-        top quartile of the anchor's neighbours, negatives from the lower
-        quartiles.
+        probability proportional to similarity; negatives are drawn at random
+        from the molecules that are not positives. ``frac_hard`` of the
+        triplets are hard: positives from the top quartile of the anchor's
+        positives, negatives from its lower quartiles.
 
         Molecules without any active feature and molecules whose closest
         neighbour is below ``low_thr`` get no triplets; both are logged.
@@ -546,10 +566,12 @@ class BinJaccardTripletSampler(BaseTripletSampler):
             metric(str): Metric to compute similarities, must be a distance
                 metric for binary data that can be converted to similarity
                 by (1-dist).
-            low_thr(float): Low similarity threshold, any pair below this is
-                negative.
-            high_thr(float): High similarity threshold, any pair above this is
-                positive.
+            low_thr(float): Minimum similarity of the fallback positives (an
+                anchor's top ``frac_neig`` molecules when too few reach
+                ``high_thr``); anchors whose closest molecule is below it get
+                no triplets. It does not define negatives.
+            high_thr(float): Similarity at or above which a molecule is a
+                positive of the anchor.
             low_percentile(float): If given, overrides ``low_thr`` with this
                 percentile of all pairwise similarities (e.g. 60).
             high_percentile(float): If given, overrides ``high_thr`` with this
