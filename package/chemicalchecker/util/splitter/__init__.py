@@ -7,7 +7,8 @@ from .traintest import Traintest
 #from .pairtraintest import PairTraintest
 #from .neighborpair import NeighborPairTraintest
 from .neighbortriplet import OldTripletSampler, TripletIterator
-from .neighbortriplet import BaseTripletSampler, AdriaTripletSampler
+from .neighbortriplet import BaseTripletSampler, BinJaccardTripletSampler
+from .neighbortriplet import AdriaTripletSampler
 from .neighbortriplet import PrecomputedTripletSampler
 #from .neighborerror import NeighborErrorTraintest
 #from .ae_siam_traintest import AE_SiameseTraintest
