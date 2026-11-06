@@ -407,41 +407,82 @@ def main(args):
                                  op_args=[args.cc_root])
     pp.add_task(export_cc_s0123_task)
     
-    def linkNew_cc_current(cc_root, new_version, ftp_data): 
-        cc = ChemicalChecker(args.cc_root)
-        cc.add_sign_metadata()
+    # TASK: Stage the signature links and publish them as a tarball.
+    # Staging only: nothing here is visible to the public until the `current`
+    # symlinks are moved by `linkNew_cc_current` below.
+    def export_sign_links(cc_root, new_version, ftp_data):
+        cc = ChemicalChecker(cc_root)
+        # `sign*` only: the default '*' also rewrites the 450 clus/neig/proj
+        # H5s, which `export_symlinks` never publishes and which nothing in
+        # the package ever reads attributes from
+        cc.add_sign_metadata(signature='sign*')
         cc.add_model_metadata()
         cc.export_symlinks()
-    
-        os.system( 'unlink /aloy/web_checker/signaturizers/current' )
-        os.system( f'ln -s /aloy/web_checker/signaturizers/{ new_version } /aloy/web_checker/signaturizers/current' )
-        
-        os.system( 'unlink /aloy/web_checker/current' )
-        os.system( f'ln -s /aloy/web_checker/package_cc/{ new_version } /aloy/web_checker/current' )
-        
-        
+
         folder = f"{ftp_data}/{new_version}/sign_links"
         if( not os.path.isdir(folder) ):
             os.mkdir(folder)
-            
+
         os.system( f'cp -Lr /aloy/web_checker/package_cc/{new_version}/sign_links/sign0_A*full*.h5 {ftp_data}/{new_version}/sign_links/' )
         os.system( f'cp -Lr /aloy/web_checker/package_cc/{new_version}/sign_links/sign1_A*reference* {ftp_data}/{new_version}/sign_links/' )
         os.system( f'cp -Lr /aloy/web_checker/package_cc/{new_version}/sign_links/sign2*full*.h5 {ftp_data}/{new_version}/sign_links/' )
         os.system( f'cp -Lr /aloy/web_checker/package_cc/{new_version}/sign_links/sign2_A*reference* {ftp_data}/{new_version}/sign_links/' )
         os.system( f'cp -Lr /aloy/web_checker/package_cc/{new_version}/sign_links/sign3*full*.h5 {ftp_data}/{new_version}/sign_links/' )
-        os.system( f"tar -cvz -f {ftp_data}/{new_version}/sign_links.tar.gz {ftp_data}/{new_version}/sign_links" )
-        #os.system( f"rm -rf {ftp_data}/sign_links" )
-        
+        os.system( f"tar -cvz -f {ftp_data}/{new_version}/sign_links.tar.gz -C {ftp_data}/{new_version} sign_links" )
 
-    linkNew_cc_current_task = PythonCallable(name="linkNew_cc_current",
-                                 python_callable=linkNew_cc_current,
-                                 op_args= [ args.cc_root, args.new_web_db.replace('cc_web_', ''), '/aloy/web_checker/ftp_data' ] )
-    pp.add_task( linkNew_cc_current_task )
+    export_sign_links_task = PythonCallable(
+        name="export_sign_links",
+        python_callable=export_sign_links,
+        op_args=[args.cc_root, args.new_web_db.replace('cc_web_', ''),
+                 '/aloy/web_checker/ftp_data'])
+    pp.add_task(export_sign_links_task)
 
     # TASK: Create json of similar molecules for explore page
     similars_task = Similars(name='similars',
                              DB=args.new_web_db, CC_ROOT=args.cc_root)
     pp.add_task(similars_task)
+
+    # TASK: Point the public `current` symlinks at the new version.
+    #
+    # This is the production cutover, kept last and separate from the staging
+    # above so it can be skipped (`-s linkNew_cc_current`) until the new web
+    # DB and the website have been tested, then run alone
+    # (`-t linkNew_cc_current`). Both links are public entry points:
+    #
+    # * `signaturizers/current` is what the `signaturizer` pip package
+    #   downloads from -- its constructor defaults to `version='current'` and
+    #   hits `/api/db/getSignaturizer/current/<space>`. Note those models come
+    #   from sign4, so `signaturizers/<version>` only exists once sign4 has
+    #   been generated and exported for that version.
+    # * `/aloy/web_checker/current` is the default `CC_ROOT` in the packaged
+    #   config, and is read by `scripts/get_repo_version.py`.
+    def linkNew_cc_current(new_version):
+
+        def relink(target, link):
+            # The previous version unlinked first and created the new link
+            # with `os.system`, whose exit code nobody checked: a missing
+            # target silently left `current` dangling (and 404'd every
+            # default signaturizer download). Refuse instead, and swap the
+            # link with a rename so `current` is never absent.
+            if not os.path.exists(target):
+                raise Exception(
+                    "Refusing to link %s: %s does not exist" % (link, target))
+            tmp = link + '.new'
+            if os.path.lexists(tmp):
+                os.remove(tmp)
+            os.symlink(target, tmp)
+            os.replace(tmp, link)
+
+        relink(f'/aloy/web_checker/signaturizers/{new_version}',
+               '/aloy/web_checker/signaturizers/current')
+        relink(f'/aloy/web_checker/package_cc/{new_version}',
+               '/aloy/web_checker/current')
+
+    linkNew_cc_current_task = PythonCallable(
+        name="linkNew_cc_current",
+        python_callable=linkNew_cc_current,
+        op_args=[args.new_web_db.replace('cc_web_', '')])
+    pp.add_task( linkNew_cc_current_task )
 
     # RUN the pipeline!
     main._log.info('TASK SEQUENCE: %s' % ', '.join([t.name for t in pp.tasks]))
