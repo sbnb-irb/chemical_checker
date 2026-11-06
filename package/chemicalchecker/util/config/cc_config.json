@@ -1,7 +1,7 @@
 {
     
     "PATH": {
-        "CC_TMP": "'/tmp/'",
+        "CC_TMP": "'/tmp/'"
     },
     "TOOLS": {
         "node2vec_exec" : "'/opt/node2vec'",
