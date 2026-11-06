@@ -633,7 +633,7 @@ def main(args):
         # link to single folder for all signatures
         cc.export_symlinks()
         # add metadata to signatures
-        cc.add_sign_metadata()
+        cc.add_sign_metadata(signature='sign*')
 
     symlinks_task = PythonCallable(
         name="symlinks",
