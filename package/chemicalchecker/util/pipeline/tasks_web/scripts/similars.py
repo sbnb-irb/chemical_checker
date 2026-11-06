@@ -430,7 +430,17 @@ COPY public.similars (inchikey, version, explore_data) FROM stdin;
 			else:
 				inchies[sel]["name"] = ""
 		
-		jsontxt = json.dumps(inchies)
+		# This is written straight into a `COPY ... FROM stdin` body, and COPY
+		# TEXT consumes one level of backslash escaping before the value ever
+		# reaches the jsonb parser. A name holding a backslash (one exists:
+		# WLXUMHKJCOFCCO-PIONGPJFSA-N, whose pubchem "name" is a SMILES) comes
+		# out of json.dumps as `\\`, COPY turns that back into `\`, and jsonb
+		# rejects the resulting `\C` as an invalid escape -- taking the whole
+		# 1000-molecule chunk down with it, since a COPY is all or nothing.
+		# Doubling the backslashes makes COPY hand the parser exactly what
+		# json.dumps produced. Backslash is the only COPY metacharacter that
+		# can appear here: ensure_ascii=True emits no raw tab or newline.
+		jsontxt = json.dumps(inchies).replace('\\', '\\\\')
 		tempfile.write(f"{ inchikey }\t{ version }\t{ jsontxt }\n".encode('UTF-8') )
 		
 		#print( inchikey, ' ik took %.3f secs', time.time() - t0)
