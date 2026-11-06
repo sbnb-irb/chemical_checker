@@ -1125,8 +1125,60 @@ class ChemicalChecker():
                     self.__log.warning(
                         "Error creating %s: %s" % (symlink, str(ex)))
 
+    @staticmethod
+    def _check_h5_copy(src, dst, metadata):
+        """Raise unless `dst` is `src` plus exactly `metadata`."""
+        with h5py.File(src, 'r') as a, h5py.File(dst, 'r') as b:
+            for k, v in metadata.items():
+                if b.attrs.get(k) != v:
+                    raise Exception('attribute %s not written' % k)
+            if set(a.keys()) != set(b.keys()):
+                raise Exception('dataset names differ')
+            for k in a.keys():
+                if a[k].shape != b[k].shape or a[k].dtype != b[k].dtype:
+                    raise Exception('%s shape/dtype differ' % k)
+                # `V` can be 34 GB, so the copy is not re-read in full: both
+                # ends are enough to catch a truncated or shifted write
+                for sl in (slice(0, 1000), slice(-1000, None)):
+                    if not np.array_equal(a[k][sl], b[k][sl]):
+                        raise Exception('%s data differ' % k)
+
+    def _stamp_h5_metadata(self, path, metadata):
+        """Write root attributes to an H5 file without ever mutating it.
+
+        The attributes are a few hundred bytes, but HDF5 has no journal: a
+        crash while the root object header is rewritten can leave the file
+        unopenable, and these signatures are weeks of compute with no backup.
+        So stamp a copy, check the copy is intact, and swap it in with
+        `os.replace`, which is atomic within a directory. An interrupted run
+        leaves the original untouched and a `.stamping` file to delete.
+        """
+        tmp = path + '.stamping'
+        try:
+            shutil.copy2(path, tmp)
+            with h5py.File(tmp, 'a') as fh:
+                for k, v in metadata.items():
+                    if k in fh.attrs:
+                        del fh.attrs[k]
+                    fh.attrs.create(name=k, data=v)
+            self._check_h5_copy(path, tmp, metadata)
+            os.replace(tmp, path)
+        except Exception:
+            if os.path.isfile(tmp):
+                os.remove(tmp)
+            raise
+
     def add_sign_metadata(self, molset='*', dataset='*', signature='*'):
         """Add metadata to available signatures.
+
+        Signature H5 files carry `cctype`, `dataset_code` and `molset` as root
+        attributes. `ChemicalChecker(root, custom_data_path=...)` rebuilds the
+        directory tree from them, so a downloaded flat folder of signatures is
+        only usable if they are set.
+
+        Files already carrying the right metadata are skipped, which makes
+        re-running free. The rest are stamped via `_stamp_h5_metadata`, which
+        never writes into the original.
 
         Args:
             molset (str, optional): Filter for the moleculeset e.g. 'full' or
@@ -1136,18 +1188,21 @@ class ChemicalChecker():
         """
         paths = self._available_sign_paths(molset, dataset, signature)
         for path in paths:
-            molset = path.split('/')[-6]
-            dataset = path.split('/')[-3]
-            sign = path.split('/')[-2]
-            metadata = dict(cctype=sign, dataset_code=dataset, molset=molset)
+            metadata = dict(cctype=path.split('/')[-2],
+                            dataset_code=path.split('/')[-3],
+                            molset=path.split('/')[-6])
             try:
-                with h5py.File(path, 'a') as fh:
-                    for k, v in metadata.items():
-                        if k in fh.attrs:
-                            del fh.attrs[k]
-                        fh.attrs.create(name=k, data=v)
-            except Exception:
-                self.__log.warning("Could not add metadata to: %s" % path)
+                with h5py.File(path, 'r') as fh:
+                    current = dict(fh.attrs)
+                # compared by value, not just presence: a wrongly stamped file
+                # is the case that most needs fixing
+                if all(current.get(k) == v for k, v in metadata.items()):
+                    continue
+                self.__log.debug("Stamping metadata on: %s" % path)
+                self._stamp_h5_metadata(path, metadata)
+            except Exception as ex:
+                self.__log.warning(
+                    "Could not add metadata to %s: %s" % (path, ex))
                 continue
 
     def add_model_metadata(self, molsets=['full', 'reference'], dataset='*',
