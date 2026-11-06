@@ -1,0 +1,30 @@
+{
+  "PATH": {
+    "CC_ROOT": "'/aloy/web_checker/package_cc/2026_04'",
+    "CC_DATA": "'/scratch/aperalta/cc_update_2026/data'",
+    "CC_TMP": "'/scratch/aperalta/cc_update_2026/tmp'",
+    "CC_REPO": "'/aloy/home/aperalta/cc_repo'",
+    "SINGULARITY_IMAGE": "'/aloy/home/aperalta/chemical_checker/cc.simg'",
+    "validation_path": "'/aloy/web_checker/package_cc/validation_sets/2026_04_validation_sets'"
+  },
+  "DB": {
+    "dialect": "'postgresql'",
+    "port": "'5432'",
+    "host": "'10.10.16.20'",
+    "user": "'cc_user'",
+    "password": <CHANGE_ME>,
+    "database": "'cc_package_2026_04'",
+    "calcdata_dbname": "'cc_calcdata'",
+    "uniprot_db_version": "'2024_05'"
+  },
+  "HPC": {
+    "system": "'slurm'",
+    "host": "'irblogin02'",
+    "queue": "'sbnb_cpu_sphr'",
+    "username": "'aperalta'"
+  },
+  "TOOLS": {
+    "node2vec_exec": "'/opt/node2vec'",
+    "snap": "'/opt'"
+  }
+}
