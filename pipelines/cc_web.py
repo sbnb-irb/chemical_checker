@@ -364,11 +364,16 @@ def main(args):
     # leaving this task so if users want to download single sign3 instead of 
     # zipped CC, they can
     def export_sign3_ftp(cc_root, ftp_path='/aloy/web_checker/ftp_data'):
-        cc = ChemicalChecker(args.cc_root)
+        cc = ChemicalChecker(cc_root)
+        out_dir = os.path.join(ftp_path, cc.name)
+        os.makedirs(out_dir, exist_ok=True)
         for ds in cc.datasets_exemplary():
             s3 = cc.get_signature('sign3', 'full', ds)
-            dst = os.path.join(ftp_path, cc.name, '%s.h5' % ds[:2])
-            cc.export(dst, s3, h5_filter=['keys', 'V', 'confidence', 'known'], h5_names_map={'confidence': 'applicability'})
+            dst = os.path.join(out_dir, '%s.h5' % ds[:2])
+            # overwrite: the task must be re-runnable after a partial failure
+            cc.export(dst, s3, overwrite=True,
+                      h5_filter=['keys', 'V', 'confidence', 'known'],
+                      h5_names_map={'confidence': 'applicability'})
 
     export_task = PythonCallable(name="export_sign3_ftp",
                                  python_callable=export_sign3_ftp,
