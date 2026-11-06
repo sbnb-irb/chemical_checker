@@ -418,6 +418,11 @@ class Plot():
         else:
             raise Exception("Unrecognized distance %s" % distance)
 
+        # scipy computes the dot products in the input dtype: on integer
+        # signatures (e.g. int8 sign0) they overflow and corrupt distances
+        d = {k: v.astype(np.float64) if np.issubdtype(v.dtype, np.integer)
+             else v for k, v in d.items()}
+
         S = np.array(sorted([distance_metric(d[k[0]], d[k[1]]) for k in S]))
         D = np.array(sorted([distance_metric(d[k[0]], d[k[1]]) for k in D]))
 

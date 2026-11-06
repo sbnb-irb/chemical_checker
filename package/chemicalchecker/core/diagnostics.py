@@ -527,6 +527,10 @@ print('JOB DONE')
 
             # calculate distances of same pairs but in out signature
             my_vectors = self.sign.get_vectors(keys1)[1]
+            # scipy computes the dot products in the input dtype: on integer
+            # signatures (e.g. int8 sign0) they overflow and corrupt distances
+            if np.issubdtype(my_vectors.dtype, np.integer):
+                my_vectors = my_vectors.astype(np.float64)
             if metric == "cosine":
                 from scipy.spatial.distance import cosine as metric
             if metric == "euclidean":
