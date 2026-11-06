@@ -161,6 +161,7 @@ class Similars(BaseTask):
         universe_keys = list( set(temp) - done )
         #universe_keys = np.array( universe_keys )
 
+        job_path = None
 
         if( len(universe_keys) > 0 ):
             # get all bioactive compounds from libraries (with pubchem names)
@@ -212,8 +213,8 @@ class Similars(BaseTask):
             #params["elements"] = universe_keys
             params["custom_chunks"] = custom_elements
             #params["memory"] = 20
-            params["cpu"] = 8
-            params["mem_by_core"] = 5 # sge
+            params["cpu"] = 2
+            params["mem_by_core"] = 8
             params["time"] = '30-00:00:00' 
             params["wait"] = True
             # job command
@@ -248,7 +249,7 @@ class Similars(BaseTask):
             except:
                 self.__log.info("Indexes already created")
 
-            if( os.path.isdir(job_path) ):
+            if( job_path is not None and os.path.isdir(job_path) ):
                 shutil.rmtree(job_path, ignore_errors=True)
             self.mark_ready()
         else:
