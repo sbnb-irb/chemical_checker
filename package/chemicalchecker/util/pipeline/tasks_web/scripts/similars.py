@@ -63,68 +63,54 @@ def _get_matrix_value_batch( info, dataset, iks, dists, flag_isInCurrent, map_co
 	pos, sign, pts = index_sign(dataset)
 	
 	M = info['matrix']
-	
-	def _search_coord(ik):
-		return ( ( type_data=='prd' and ik in map_coords_obs) or ( type_data=='obs' and coord in map_coords_obs[ik] ) )
-	
-	iks = list(iks)
-	all_keys = np.array( list(info['ink_pos_mat']) )
-	all_idx = np.array( list(info['ink_pos_mat'].values()) )
-	bin_idxs = _is_in_set_nb( all_keys, iks )
-	filt_keys = all_keys[ bin_idxs ]
-	filt_idx = all_idx[ bin_idxs ]
-	
-	aux = dict( zip(filt_keys, filt_idx) )
-	
-	def _check_prior_val(ik):
-		return not ( M[ aux[ik], pos] > 0 )
-	bin_idx0 = np.vectorize(_check_prior_val)( filt_keys )
-	bin_idxs = np.array( [True]*len(filt_idx) )
-	bin_idxs = bin_idxs & bin_idx0
-	
-	if( np.all( bin_idxs == False ) ):
-		return info
-	else:
-		val = dists
-		# otherwise check if we can say they are different
-		if(not flag_isInCurrent):
-			bin_idx2 = np.vectorize(_search_coord)( filt_keys )
-			bin_idxs = bin_idxs & bin_idx2
-			filt_keys = filt_keys[bin_idxs]
-			val = np.array( [dummy]*len(filt_keys) )
-		else:
-			temp = dict( zip(iks, dists.tolist() ) )
-			new_keys = filt_keys[ bin_idxs ]
-			dists = list( map( lambda x: temp[x], new_keys))
-			val = np.array( dists )
+	ink_pos = info['ink_pos_mat']
 
-		t = filt_idx[ bin_idxs ]
-		if( len(t)>0 ):
-			M[t, pos] = sign * val
-			
-			if( flag_isInCurrent ):
-				M[t, 25] += pts
-			
-		info['matrix'] = M
-		
+	# `ink_pos` already holds a row of `M` for every neighbour of this
+	# molecule, so the keys we were handed become row indices by lookup.
+	# What this replaces scanned all ~20k neighbours and rebuilt two arrays of
+	# that size on every call, and this is called twice per dataset, so 100
+	# times per molecule.
+	keys = [ ik for ik in iks if ik in ink_pos ]
+	if( len(keys) == 0 ):
+		return info
+	idx = np.fromiter( ( ink_pos[ik] for ik in keys ), dtype=np.int64,
+					   count=len(keys) )
+
+	# only write neighbours this dataset has not scored yet. NaN compares
+	# false, which is what the `not ( M[...] > 0 )` this replaces relied on.
+	keep = np.logical_not( M[idx, pos] > 0 )
+	if( not keep.any() ):
+		return info
+	idx = idx[ keep ]
+	keys = [ ik for ik, ok in zip(keys, keep.tolist()) if ok ]
+
+	if( flag_isInCurrent ):
+		temp = dict( zip( list(iks), dists.tolist() ) )
+		val = np.fromiter( ( temp[ik] for ik in keys ), dtype=float,
+						   count=len(keys) )
+		M[idx, pos] = sign * val
+		M[idx, 25] += pts
+	else:
+		# otherwise check if we can say they are different
+		hit = np.fromiter(
+			( ( type_data=='prd' and ik in map_coords_obs) or ( type_data=='obs' and coord in map_coords_obs[ik] )
+			  for ik in keys ), dtype=bool, count=len(keys) )
+		idx = idx[ hit ]
+		if( len(idx)>0 ):
+			M[idx, pos] = sign * dummy
+
+	info['matrix'] = M
 	return info
 
 def _load_presence_libs(universe, ref_bioactive):
+	# Membership is only ever asked for keys that are in the universe, so a
+	# set of the members answers it exactly. The dict this replaces held one
+	# entry per universe key per library: 15.4M entries to record 54.7k
+	# memberships, ~1.5 GB of every job's footprint.
 	u = set(universe)
-	b = [True]*len(u)
-	all_ = dict( zip(list(u), b) )
-	dc = { 'All Bioactive Molecules': all_ }
+	dc = { 'All Bioactive Molecules': u }
 	for l in ref_bioactive:
-		ok = u.intersection( ref_bioactive[l] )
-		nok = u.difference( ref_bioactive[l] )
-		a = list(ok)
-		a.extend( list(nok) )
-		b = ( [True]*len(ok) )
-		c = ( [False]*len(nok) )
-		b.extend( c )
-		
-		dc[l] = dict( zip( a,b ) )
-		
+		dc[l] = u.intersection( ref_bioactive[l] )
 	return dc
 
 def _is_in_set_nb(a, b):
@@ -257,8 +243,17 @@ def main(args):
 		dist_bin = np.digitize(nn_dist, dist_cutoffs)
 		# get close neighbors inchikeys and distance bins and apply mapping
 		mappings = signatures[type_data][coord].get_h5_dataset('mappings')
-		ref_mapping = list(mappings[:, 1])
-		
+		# `mappings` maps every full-universe key (column 0) onto the
+		# reference key that represents it (column 1). What follows needs,
+		# per molecule, the rows whose reference key is one of its <=max_neig
+		# neighbours. Scanning all ~1.5M rows once per molecule dominated the
+		# runtime of this script (measured 0.36 s per molecule per dataset on
+		# A1, ~12 s per molecule over the 50 datasets), so index the reference
+		# column once per dataset instead and look the neighbours up directly.
+		ref_to_rows = collections.defaultdict(list)
+		for row_idx, ref_ik in enumerate(mappings[:, 1].tolist()):
+			ref_to_rows[ref_ik].append(row_idx)
+
 		#t0 = time.time()
 		# couldn't find a way to avoid iterating on molecules
 		index_ik = 0
@@ -270,9 +265,14 @@ def main(args):
 			ref_dbin = ref_dbin[mask].tolist()
 			ref_dbin_mapping = dict( zip(ref_nn_ink, ref_dbin) )
 			# get idx bassed on redundant 'reference' column
-			#full_idxs = np.isin(ref_mapping, list(ref_nn_ink) )
-			full_idxs = _is_in_set_nb( np.array(ref_mapping), ref_nn_ink.tolist() )
-			
+			# `np.unique` sorts and de-duplicates, so `filtered` below is
+			# identical to the `mappings[bool_mask]` this replaces even if a
+			# reference key were ever to appear twice among the neighbours.
+			full_idxs = []
+			for ref_ik in ref_nn_ink.tolist():
+				full_idxs.extend( ref_to_rows.get(ref_ik, ()) )
+			full_idxs = np.unique( np.array(full_idxs, dtype=np.int64) )
+
 			"""
 			# get ref to full mapping (redundat mols as lists)
 			full_ref_mapping = dict(mappings[full_idxs])
@@ -394,21 +394,19 @@ COPY public.similars (inchikey, version, explore_data) FROM stdin;
 			out_dataset = all_neigh - in_dataset
 			temp_info[inchikey] = _get_matrix_value_batch( temp_info[inchikey], dataset, out_dataset, None, False, map_coords_obs )
 			
-			aux = np.array( list( neig_ds ) )
+			aux = list( neig_ds )
 			for lib in libs:
-				
-				def _check_lib(ik):
-					return found[lib][ik]
-					
 				if ref_counts[lib][pos] < best:
 					max_ = best - ref_counts[lib][pos]
-					
-					bin_lib = np.vectorize( _check_lib )( aux )
-					filtered = aux[ bin_lib ]
-					ok_lib = set( filtered ).difference( set( inchies[lib] ) )
-					idxs = _is_in_set_nb( filtered, list(ok_lib) )
-					ok_lib = filtered[idxs][:max_]
-					
+
+					# members of `lib` among this dataset's neighbours that
+					# are not already recorded, kept in `aux` order as the
+					# boolean mask this replaces did
+					members = found[lib]
+					already = set( inchies[lib] )
+					ok_lib = [ ik for ik in aux
+							   if ik in members and ik not in already ][:max_]
+
 					ref_counts[lib][pos] += len(ok_lib)
 					inchies[lib].extend( ok_lib )
 					selected.update( ok_lib )
