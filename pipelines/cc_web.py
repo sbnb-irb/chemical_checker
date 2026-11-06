@@ -254,58 +254,93 @@ def main(args):
                                   CC_ROOT=args.cc_root)
     pp.add_task(stats_plots_task)
 
-    # TASK: Link/copy generated files to webpage repository (mosaic)
+    # TASK: Link/copy generated files to webpage repository (checker_docker)
     def links_to_web_repo(cc_root, web_repo_path, tmpdir, cachedir):
+        """Publish the generated files into the web repository.
+
+        Two conventions of that repository drive what follows:
+
+        * `app/images/plots` and `app/images/statistics` are *absolute*
+          symlinks into the CC package tree. `app/shared/data/squares.json`
+          points at `images/plots/<XX>_largevis.png` and
+          `app/shared/data/statistics.json` at `images/statistics/<name>.png`.
+          Each target must sit inside one of the read-only volumes declared in
+          `docker-compose.yml`, otherwise the link dangles in the container.
+        * The three large JSONs are *server only*: `routes/db.js` loads them
+          from `<repo>/data/` at startup, and the image build fails if they
+          appear under `app/shared/data/`, which express.static exposes to the
+          browser.
+        """
+        if not os.path.isdir(web_repo_path):
+            raise Exception("Web repository not found: %s" % web_repo_path)
+
         plots_web = os.path.join(cc_root, 'plots_web')
         if not os.path.isdir(plots_web):
             raise Exception(
-                "%s not found! Did cc_web.py finish correctly?" %
-                plots_web)
-        
-        # link plots dir
-        #src_dir = os.path.join(plots_web, 'plots_home')
-        src_dir = plots_web
-        if not os.path.isdir(src_dir):
+                "%s not found! Did the `plots` task run?" % plots_web)
+        plots_stats = os.path.join(plots_web, 'plots_stats')
+        if not os.path.isdir(plots_stats):
             raise Exception(
-                "%s not found! Did cc_web.py finish correctly?" %
-                src_dir)
-        dst_dir = os.path.join(web_repo_path, 'app', 'images', 'plots')
-        if os.path.isdir(dst_dir):
-            os.unlink(dst_dir)
-        os.symlink(src_dir, dst_dir)
-        
-        # link statistics dir
-        src_dir = os.path.join(plots_web, 'plots_stats')
-        if not os.path.isdir(src_dir):
-            raise Exception(
-                "%s not found! Did cc_web.py finish correctly?" %
-                src_dir)
-        dst_dir = os.path.join(web_repo_path, 'app', 'images', 'statistics')
-        if os.path.isdir(dst_dir):
-            os.unlink(dst_dir)
-        os.symlink(src_dir, dst_dir)
-        
+                "%s not found! Did the `stats_plots` task run?" % plots_stats)
+
+        def relink(src_dir, dst_dir):
+            # `os.path.isdir` is true for a symlink to a directory as well,
+            # but `os.unlink` only removes the link: on a real directory it
+            # raises IsADirectoryError. A real directory here is tracked
+            # content of the web repository, so refuse rather than delete it.
+            if os.path.islink(dst_dir):
+                os.unlink(dst_dir)
+            elif os.path.exists(dst_dir):
+                raise Exception(
+                    "%s is a real directory, not a symlink. Drop it from the "
+                    "web repository (`git rm -r`) and run again." % dst_dir)
+            os.symlink(src_dir, dst_dir)
+
+        images_dir = os.path.join(web_repo_path, 'app', 'images')
+        relink(plots_web, os.path.join(images_dir, 'plots'))
+        relink(plots_stats, os.path.join(images_dir, 'statistics'))
+
+        # These three total ~306 MB, so write to a temporary name and rename:
+        # a crash mid-copy would otherwise leave the web repository with a
+        # truncated file that `routes/db.js` fails to parse at startup.
+        data_dir = os.path.join(web_repo_path, 'data')
+        os.makedirs(data_dir, exist_ok=True)
+
+        def publish_copy(src_path, dst_name):
+            dst_path = os.path.join(data_dir, dst_name)
+            tmp_path = dst_path + '.new'
+            shutil.copyfile(src_path, tmp_path)
+            os.replace(tmp_path, dst_path)
+
         # copy bioactive_mol_set.json (aka cc universe)
-        src_path = os.path.join(cachedir, 'bioactive_mol_set.json')
-        dst_path = os.path.join(web_repo_path, 'app',
-                                'shared', 'data', 'bioactive_mol_set.json')
-        shutil.copyfile(src_path, dst_path)
-        
+        publish_copy(os.path.join(cachedir, 'bioactive_mol_set.json'),
+                     'bioactive_mol_set.json')
+
         # copy inchies_names.json (aka molecule common names)
-        src_path = os.path.join(tmpdir, 'inchies_names.json')
-        dst_path = os.path.join(web_repo_path, 'app',
-                                'shared', 'data', 'inchies_names.json')
-        shutil.copyfile(src_path, dst_path)
-        
+        publish_copy(os.path.join(tmpdir, 'inchies_names.json'),
+                     'inchies_names.json')
+
         # generate all inchikeys per coordinate
-        cc = ChemicalChecker(args.cc_root)
-        ink_coord = {}
-        for ds in cc.datasets_exemplary():
-            s1 = cc.get_signature('sign1', 'full', ds)
-            ink_coord[ds[:2]] = list(s1.keys)
-        dst_path = os.path.join(web_repo_path, 'app',
-                                'shared', 'data', 'iks_coord.json')
-        json.dump(ink_coord, open(dst_path, 'w'))
+        #
+        # Written one coordinate at a time rather than as a single dict: the
+        # 25 exemplary sign1 hold 12.5M keys between them, and holding all of
+        # them as python objects costs ~3.4 GB (~293 B/key, measured) against
+        # ~430 MB for the largest space alone. `.tolist()` rather than
+        # `list()` so the keys are plain str and not numpy.str_.
+        cc = ChemicalChecker(cc_root)
+        dst_path = os.path.join(data_dir, 'iks_coord.json')
+        tmp_path = dst_path + '.new'
+        with open(tmp_path, 'w') as fh:
+            fh.write('{')
+            for idx, ds in enumerate(cc.datasets_exemplary()):
+                if idx:
+                    fh.write(', ')
+                keys = cc.get_signature('sign1', 'full', ds).keys.tolist()
+                fh.write('%s: ' % json.dumps(ds[:2]))
+                json.dump(keys, fh)
+                del keys
+            fh.write('}')
+        os.replace(tmp_path, dst_path)
 
     links_task = PythonCallable(
         name="links_to_web_repo",
