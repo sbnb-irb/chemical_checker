@@ -866,7 +866,10 @@ class ChemicalChecker():
                     sign_dir = os.path.join(new_dir, '%s' % sign_type)
                     dst_models_path = FileSystem.check_dir_existance_create(sign_dir, [
                                                                             'models'])
-                    regex = re.compile('(.*pkl$)')
+                    regex = re.compile(
+                        r'.*\.pkl$'
+                        r'|.*\.pkl\.projection(\..*\.npy)?$'
+                        r'|.*\.joblib$')
                     self.__log.debug("Exporting files of {} from \
                                         {} to {}".format(sign_type, sign.model_path, dst_models_path))
                     for _, _, src_files in os.walk(sign.model_path):
